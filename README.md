@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BioLum — Marriage Biodata Creator
 
-## Getting Started
+> Create beautiful matrimonial biodata in minutes. 10+ designer templates, live preview, AI-powered bio writing, and instant PDF + WhatsApp-ready image export.
 
-First, run the development server:
+---
+
+## ✨ Features
+
+- **Multi-step form** — 6 sections covering all biodata needs
+- **Live preview** — see changes instantly as you type
+- **10+ templates** — traditional, modern, elegant & minimal
+- **Photo upload** — with in-browser crop
+- **AI Bio Writer** — Gemini AI writes your "About Me"
+- **Export options** — WhatsApp-ready image, print PDF
+- **Privacy first** — data stays on your device
+- **No login required** — create and download instantly
+
+## 🚀 Getting Started
 
 ```bash
+npm install
+cp .env.example .env.local
+# Fill in GEMINI_API_KEY in .env.local for AI features
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🔑 Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `GEMINI_API_KEY` | Google AI Studio API key for AI bio writer | Optional |
+| `RAZORPAY_KEY_ID` | Razorpay key for payments | Phase 2 |
+| `RAZORPAY_KEY_SECRET` | Razorpay secret | Phase 2 |
 
-## Learn More
+## 🏗️ Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Framework:** Next.js 16 (App Router)
+- **Styling:** Tailwind CSS v4
+- **State:** Zustand (persisted to localStorage)
+- **Image Export:** dom-to-image
+- **AI:** Google Gemini API (`gemini-4-hydrogen`)
+- **Payments:** Razorpay _(Phase 2)_
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📁 Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/           # Next.js routes
+│   ├── page.tsx   # Landing page
+│   ├── create/    # Form builder (split-pane)
+│   ├── templates/ # Template gallery
+│   └── api/       # generate-bio, payment
+├── components/
+│   ├── form/      # 6 form section components
+│   ├── templates/ # TemplatePicker
+│   └── preview/   # LivePreview + ExportPanel
+├── lib/
+│   ├── store/     # Zustand biodata store
+│   ├── constants.ts
+│   └── utils.ts
+└── types/biodata.ts
+```
 
-## Deploy on Vercel
+## 🗓️ Roadmap
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [x] Multi-step form (all 6 sections)
+- [x] Live split-pane preview
+- [x] 10 designer templates
+- [x] Photo upload
+- [x] Image export (WhatsApp-ready)
+- [x] AI bio writer (Gemini)
+- [x] Landing page + template gallery
+- [ ] Razorpay payment integration
+- [ ] User accounts (Supabase)
+- [ ] Shareable QR biodata link
+- [ ] Hindi language support
