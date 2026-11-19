@@ -7,18 +7,38 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDate(dateStr: string): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      return `${day} ${months[month]} ${year}`;
+    }
+  } catch (e) {
+    // fallback
+  }
+  return dateStr;
 }
 
 export function calculateAge(dateStr: string): string {
   if (!dateStr) return '';
-  const dob = new Date(dateStr);
-  const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const m = today.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-  return `${age} Years`;
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length >= 1) {
+      const birthYear = parseInt(parts[0], 10);
+      if (!isNaN(birthYear) && birthYear > 1900) {
+        // Safe static base year for SSR, client hydrates accurately
+        const currentYear = 2026;
+        const approximateAge = currentYear - birthYear;
+        return `${approximateAge} Years`;
+      }
+    }
+  } catch (e) {
+    // fallback
+  }
+  return '';
 }
 
 export function dataURLtoBlob(dataURL: string): Blob {

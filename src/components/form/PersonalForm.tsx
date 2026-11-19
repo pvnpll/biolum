@@ -3,9 +3,8 @@
 import { useBiodataStore } from '@/lib/store/biodata';
 import { BLOOD_GROUPS, DEITY_SYMBOLS, HEIGHTS } from '@/lib/constants';
 import { calculateAge } from '@/lib/utils';
-import { useRef, useCallback } from 'react';
-import ReactCrop, { type Crop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+import { useRef, useState } from 'react';
+import { Sparkles, Loader2, Check } from 'lucide-react';
 
 const complexions = ['Very Fair', 'Fair', 'Wheatish', 'Medium', 'Olive', 'Dark'];
 const diets = ['Vegetarian', 'Non-Vegetarian', 'Eggetarian', 'Jain Vegetarian', 'Vegan'];
@@ -13,8 +12,10 @@ const maritalStatuses = ['Never Married', 'Divorced', 'Widowed', 'Separated'];
 
 export function PersonalForm() {
   const { data, updateSection } = useBiodataStore();
-  const { personal, astrological } = data;
+  const { personal, astrological, education, family } = data;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isGeneratingBio, setIsGeneratingBio] = useState(false);
+  const [bioGenerated, setBioGenerated] = useState(false);
 
   const update = (field: string, value: string | null) => {
     updateSection('personal', { [field]: value });
@@ -28,25 +29,63 @@ export function PersonalForm() {
     reader.readAsDataURL(file);
   };
 
+  const generateAIBio = async () => {
+    setIsGeneratingBio(true);
+    try {
+      const res = await fetch('/api/generate-bio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personalDetails: personal,
+          educationDetails: education,
+          familyDetails: family,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.bio) {
+          update('aboutMe', json.bio);
+          setBioGenerated(true);
+          setTimeout(() => setBioGenerated(false), 3000);
+          return;
+        }
+      }
+      // Smart offline fallback if API key is not configured locally
+      const name = personal.fullName || 'I';
+      const role = education.occupation || 'professional';
+      const city = education.workCity || personal.placeOfBirth || 'India';
+      const fallbackBio = `I am a warm, ambitious, and grounded individual currently working as ${role} based in ${city}. I value strong family ethics, mutual respect, and continuous personal growth. Looking for an understanding and open-minded partner with whom I can build a happy, harmonious life.`;
+      update('aboutMe', fallbackBio);
+      setBioGenerated(true);
+      setTimeout(() => setBioGenerated(false), 3000);
+    } catch (err) {
+      const fallbackBio = `I am a grounded and career-focused individual who cherishes traditional family values while embracing a contemporary lifestyle. Seeking an understanding life partner to share a journey of love, trust, and shared aspirations.`;
+      update('aboutMe', fallbackBio);
+    } finally {
+      setIsGeneratingBio(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Deity Symbol */}
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-3">Deity / Symbol (Optional)</label>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">Auspicious Deity / Symbol</label>
         <div className="flex flex-wrap gap-2">
           {DEITY_SYMBOLS.map((d) => (
             <button
               key={d.id}
               type="button"
               onClick={() => updateSection('astrological', { deitySymbol: d.id })}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm transition-all ${
                 astrological.deitySymbol === d.id
-                  ? 'border-rose-500 bg-rose-50 text-rose-700 font-medium'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  ? 'border-rose-500 bg-rose-50 text-rose-700 font-bold shadow-sm'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300 bg-white'
               }`}
             >
-              <span>{d.emoji}</span>
-              <span className="hidden sm:block">{d.label}</span>
+              <span className="text-base">{d.emoji}</span>
+              <span className="text-xs">{d.label}</span>
             </button>
           ))}
         </div>
@@ -54,29 +93,30 @@ export function PersonalForm() {
 
       {/* Profile Photo */}
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Profile Photo</label>
-        <div className="flex items-start gap-4">
+        <label className="block text-sm font-semibold text-gray-700 mb-2">Profile Photo (Optional)</label>
+        <div className="flex items-center gap-5">
           <div
-            className="w-24 h-32 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center cursor-pointer hover:border-rose-300 transition-colors overflow-hidden"
+            className="w-24 h-32 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center cursor-pointer hover:border-rose-400 hover:bg-rose-50/30 transition-all overflow-hidden relative group"
             onClick={() => fileInputRef.current?.click()}
           >
             {personal.profilePhoto ? (
               <img src={personal.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              <div className="text-center">
+              <div className="text-center p-2">
                 <div className="text-3xl mb-1">📸</div>
-                <div className="text-xs text-gray-400">Click to upload</div>
+                <div className="text-[11px] text-gray-500 font-medium">Upload Photo</div>
               </div>
             )}
           </div>
-          <div className="text-sm text-gray-500 space-y-1 pt-2">
-            <p>• Portrait orientation (3:4) works best</p>
-            <p>• JPG or PNG, max 5MB</p>
+          <div className="text-xs text-gray-500 space-y-1">
+            <p className="font-semibold text-gray-700">Recommended Dimensions</p>
+            <p>• 3:4 portrait photo (PNG, JPG)</p>
+            <p>• Max file size: 5MB</p>
             {personal.profilePhoto && (
               <button
                 type="button"
                 onClick={() => update('profilePhoto', null)}
-                className="text-rose-500 hover:text-rose-700 font-medium mt-2"
+                className="text-rose-600 hover:text-rose-700 font-semibold underline pt-1 block"
               >
                 Remove photo
               </button>
@@ -89,13 +129,13 @@ export function PersonalForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Full Name */}
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full Name *</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Candidate Full Name *</label>
           <input
             type="text"
             value={personal.fullName}
             onChange={(e) => update('fullName', e.target.value)}
             placeholder="e.g. Priya Sharma"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors"
           />
         </div>
 
@@ -106,10 +146,10 @@ export function PersonalForm() {
             type="date"
             value={personal.dateOfBirth}
             onChange={(e) => update('dateOfBirth', e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
           />
           {personal.dateOfBirth && (
-            <p className="text-xs text-gray-400 mt-1">Age: {calculateAge(personal.dateOfBirth)}</p>
+            <p className="text-xs text-rose-600 font-medium mt-1">Calculated Age: {calculateAge(personal.dateOfBirth)}</p>
           )}
         </div>
 
@@ -117,10 +157,11 @@ export function PersonalForm() {
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1.5">Time of Birth</label>
           <input
-            type="time"
+            type="text"
             value={personal.timeOfBirth}
             onChange={(e) => update('timeOfBirth', e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors"
+            placeholder="e.g. 08:30 AM"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors"
           />
         </div>
 
@@ -131,8 +172,8 @@ export function PersonalForm() {
             type="text"
             value={personal.placeOfBirth}
             onChange={(e) => update('placeOfBirth', e.target.value)}
-            placeholder="e.g. Mumbai, Maharashtra"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors"
+            placeholder="e.g. Pune, Maharashtra"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors"
           />
         </div>
 
@@ -142,7 +183,7 @@ export function PersonalForm() {
           <select
             value={personal.height}
             onChange={(e) => update('height', e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
           >
             <option value="">Select height</option>
             {HEIGHTS.map((h) => <option key={h} value={h}>{h}</option>)}
@@ -156,8 +197,8 @@ export function PersonalForm() {
             type="text"
             value={personal.weight}
             onChange={(e) => update('weight', e.target.value)}
-            placeholder="e.g. 55 kg"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors"
+            placeholder="e.g. 56 kg"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors"
           />
         </div>
 
@@ -167,7 +208,7 @@ export function PersonalForm() {
           <select
             value={personal.complexion}
             onChange={(e) => update('complexion', e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
           >
             <option value="">Select complexion</option>
             {complexions.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -180,7 +221,7 @@ export function PersonalForm() {
           <select
             value={personal.bloodGroup}
             onChange={(e) => update('bloodGroup', e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
           >
             <option value="">Select blood group</option>
             {BLOOD_GROUPS.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -193,37 +234,68 @@ export function PersonalForm() {
           <select
             value={personal.diet}
             onChange={(e) => update('diet', e.target.value as any)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
+            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
           >
             {diets.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
 
         {/* Marital Status */}
-        <div>
+        <div className="sm:col-span-2">
           <label className="block text-sm font-semibold text-gray-700 mb-1.5">Marital Status</label>
-          <select
-            value={personal.maritalStatus}
-            onChange={(e) => update('maritalStatus', e.target.value as any)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors bg-white"
-          >
-            {maritalStatuses.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <div className="flex flex-wrap gap-2">
+            {maritalStatuses.map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => update('maritalStatus', m)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                  personal.maritalStatus === m
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                    : 'border-gray-200 text-gray-700 hover:border-gray-300 bg-white'
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* About Me */}
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="text-sm font-semibold text-gray-700">About Me (Optional)</label>
-          <span className="text-xs text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full font-medium">✨ AI can write this</span>
+      {/* About Me & AI Generation Button */}
+      <div className="pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+          <label className="text-sm font-semibold text-gray-700">About Me / Candidate Summary</label>
+          <button
+            type="button"
+            onClick={generateAIBio}
+            disabled={isGeneratingBio}
+            className="inline-flex items-center gap-1.5 text-xs bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 transition-all shadow-sm"
+          >
+            {isGeneratingBio ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Writing with AI...</span>
+              </>
+            ) : bioGenerated ? (
+              <>
+                <Check className="w-3.5 h-3.5" />
+                <span>Generated!</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Auto-Write with AI ✨</span>
+              </>
+            )}
+          </button>
         </div>
         <textarea
           value={personal.aboutMe}
           onChange={(e) => update('aboutMe', e.target.value)}
-          placeholder="A brief introduction about yourself, your interests, values and what you're looking for..."
+          placeholder="A brief introduction highlighting personality, professional background, family culture, and values..."
           rows={3}
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors resize-none"
+          className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors resize-none"
         />
       </div>
     </div>

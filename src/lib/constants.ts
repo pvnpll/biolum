@@ -110,6 +110,7 @@ export const STEPS: StepConfig[] = [
   { id: 'family', label: 'Family Background', shortLabel: 'Family', icon: '🏠', description: 'Your family details' },
   { id: 'contact', label: 'Contact Details', shortLabel: 'Contact', icon: '📞', description: 'How to reach you' },
   { id: 'expectations', label: 'Partner Expectations', shortLabel: 'Expectations', icon: '💫', description: 'What you are looking for' },
+  { id: 'preview', label: 'Preview & Download', shortLabel: 'Preview & Export', icon: '✨', description: 'Review your full biodata and download' },
 ];
 
 export const RASHIS = [
