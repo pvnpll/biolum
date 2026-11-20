@@ -5,9 +5,9 @@ import Link from 'next/link';
 import {
   Phone, MessageCircle, Share2, Check, Download,
   Heart, Sparkles, Star, MapPin, Briefcase, GraduationCap,
-  Users, User, ChevronDown, QrCode, X, Copy, ExternalLink,
+  Users, User, QrCode, X, Copy, ExternalLink,
   BookOpen, Coffee, Music, Camera, Dumbbell, Plane, ChefHat,
-  ShieldCheck,
+  ShieldCheck, Contact, Compass, Flame, Smile, Maximize2
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 
@@ -22,6 +22,7 @@ interface ProfileData {
   partnerExpectations: Record<string, string>;
   interests?: string[];
   personalityTags?: string[];
+  lifestyleChoices?: Record<string, string>;
   title?: string;
 }
 
@@ -44,18 +45,19 @@ interface Props {
 // ─── Tab Config ───────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'about',  label: 'About',   icon: User },
-  { id: 'career', label: 'Career',  icon: Briefcase },
-  { id: 'family', label: 'Family',  icon: Users },
-  { id: 'match',  label: 'Match',   icon: Heart },
+  { id: 'about', label: 'About', icon: User },
+  { id: 'career', label: 'Career', icon: Briefcase },
+  { id: 'family', label: 'Family', icon: Users },
+  { id: 'match', label: 'Partner & Values', icon: Heart },
 ];
 
-// ─── Personality Tag Pool (fallback suggestions) ──────────────────────────────
+// ─── Personality Tag Pool & Emoji ─────────────────────────────────────────────
 
 const TAG_EMOJI: Record<string, string> = {
   'Family-First': '🏡', Ambitious: '🚀', Creative: '🎨', Traveller: '✈️',
-  Introvert: '📚', Funny: '😄', 'Health-Conscious': '🥗', Spiritual: '🕉️',
-  'Music Lover': '🎵', Foodie: '🍜', Adventurous: '🏔️', Reader: '📖',
+  Introvert: '📚', Extrovert: '🌟', Funny: '😄', 'Health-Conscious': '🥗',
+  Spiritual: '🕉️', 'Music Lover': '🎵', Foodie: '🍜', Adventurous: '🏔️',
+  Reader: '📖', 'Coffee Lover': '☕', 'Dog Lover': '🐕', 'Cat Lover': '🐈',
 };
 
 const DEFAULT_TAGS = ['Family-First', 'Ambitious', 'Creative'];
@@ -64,15 +66,25 @@ const DEFAULT_TAGS = ['Family-First', 'Ambitious', 'Creative'];
 
 const INTEREST_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Music: Music, Reading: BookOpen, Coffee: Coffee, Photography: Camera,
-  Fitness: Dumbbell, Travel: Plane, Cooking: ChefHat,
+  Fitness: Dumbbell, Travel: Plane, Cooking: ChefHat, Yoga: Sparkles,
+  Art: PaletteIcon, Movies: FilmIcon, Nature: Compass, Coding: Briefcase
 };
+
+function PaletteIcon({ className }: { className?: string }) {
+  return <span className={className}>🎨</span>;
+}
+
+function FilmIcon({ className }: { className?: string }) {
+  return <span className={className}>🎬</span>;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function hex2rgb(hex: string) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  if (!hex || !hex.startsWith('#')) return '139, 0, 0';
+  const r = parseInt(hex.slice(1, 3), 16) || 139;
+  const g = parseInt(hex.slice(3, 5), 16) || 0;
+  const b = parseInt(hex.slice(5, 7), 16) || 0;
   return `${r}, ${g}, ${b}`;
 }
 
@@ -85,9 +97,32 @@ function formatDate(str: string) {
   }
 }
 
+function downloadVCard(name: string, phone?: string, email?: string, city?: string, url?: string) {
+  const vcard = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    `FN:${name} (Marriage Biodata)`,
+    `TITLE:BioLum Verified Candidate`,
+    phone ? `TEL;TYPE=CELL:${phone}` : '',
+    email ? `EMAIL:${email}` : '',
+    city ? `ADR;TYPE=HOME:;;;${city};;;` : '',
+    url ? `URL:${url}` : '',
+    `NOTE:Matrimonial profile on BioLum: ${url || ''}`,
+    'END:VCARD'
+  ].filter(Boolean).join('\r\n');
+
+  const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `${(name || 'biodata').replace(/\s+/g, '_')}_contact.vcf`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 // ─── Sub-Components ───────────────────────────────────────────────────────────
 
-function InfoRow({ label, value }: { label: string; value?: string }) {
+function InfoRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <div className="flex gap-2 py-2 border-b border-gray-100 last:border-0 text-sm">
@@ -108,7 +143,7 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
 function SectionTitle({ children, color }: { children: React.ReactNode; color: string }) {
   return (
     <h3 className="text-xs font-black uppercase tracking-widest mb-4 flex items-center gap-2" style={{ color }}>
-      <span className="w-1 h-4 rounded-full inline-block flex-none" style={{ backgroundColor: color }} />
+      <span className="w-1.5 h-4 rounded-full inline-block flex-none" style={{ backgroundColor: color }} />
       {children}
     </h3>
   );
@@ -117,14 +152,14 @@ function SectionTitle({ children, color }: { children: React.ReactNode; color: s
 // ─── QR Modal ─────────────────────────────────────────────────────────────────
 
 function QRModal({ url, name, onClose }: { url: string; name: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl p-7 w-full max-w-xs flex flex-col items-center gap-5 shadow-2xl"
+        className="bg-white rounded-3xl p-6 sm:p-7 w-full max-w-xs flex flex-col items-center gap-4 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between w-full">
@@ -133,17 +168,25 @@ function QRModal({ url, name, onClose }: { url: string; name: string; onClose: (
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
-        <div className="p-3 rounded-2xl border-2 border-gray-100">
+        <div className="p-4 bg-white rounded-2xl border-2 border-gray-100 shadow-inner">
           <QRCode value={url} size={180} />
         </div>
         <p className="text-xs text-gray-500 text-center leading-relaxed">
           Share this QR code for <strong>{name}</strong>&#39;s matrimonial biodata
         </p>
         <button
-          onClick={() => { navigator.clipboard?.writeText(url); onClose(); }}
+          onClick={() => {
+            navigator.clipboard?.writeText(url);
+            setCopied(true);
+            setTimeout(() => {
+              setCopied(false);
+              onClose();
+            }, 1200);
+          }}
           className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-gray-800 transition"
         >
-          <Copy className="w-4 h-4" /> Copy Profile Link
+          {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+          {copied ? 'Copied to Clipboard!' : 'Copy Profile Link'}
         </button>
       </div>
     </div>
@@ -157,54 +200,83 @@ function InterestModal({
 }: {
   name: string; phone?: string; whatsapp?: string; onClose: () => void; accentColor: string;
 }) {
+  const wa = whatsapp || phone;
   const msg = encodeURIComponent(`Namaste! 🙏 I came across the matrimonial biodata of ${name} on BioLum and would like to get in touch.`);
+  
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl p-7 w-full max-w-sm flex flex-col gap-5 shadow-2xl"
+        className="bg-white rounded-3xl p-6 sm:p-7 w-full max-w-sm flex flex-col gap-5 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <button onClick={onClose} className="self-end p-1.5 rounded-full hover:bg-gray-100 transition">
-          <X className="w-4 h-4 text-gray-500" />
-        </button>
+        <div className="flex justify-between items-start">
+          <div className="text-3xl">💌</div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 transition">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
 
-        <div className="text-center -mt-4">
-          <div className="text-5xl mb-3">💌</div>
+        <div>
           <h2 className="text-xl font-black text-gray-900">Express Your Interest</h2>
-          <p className="text-sm text-gray-500 mt-1">Reach out to {name}&#39;s family</p>
+          <p className="text-xs text-gray-500 mt-1">Directly connect with {name}&#39;s family</p>
         </div>
 
         <div className="flex flex-col gap-3">
-          {whatsapp && (
+          {wa && (
             <a
-              href={`https://wa.me/${whatsapp.replace(/[^0-9]/g, '')}?text=${msg}`}
+              href={`https://wa.me/${wa.replace(/[^0-9]/g, '')}?text=${msg}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-2xl font-bold text-sm transition-all active:scale-95"
+              className="flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-2xl font-bold text-sm transition-all shadow-md active:scale-95"
             >
               <MessageCircle className="w-5 h-5" />
-              Send WhatsApp Message
+              Chat on WhatsApp
             </a>
           )}
           {phone && (
             <a
               href={`tel:${phone}`}
-              className="flex items-center justify-center gap-3 border-2 text-gray-900 py-3.5 rounded-2xl font-bold text-sm transition-all hover:bg-gray-50 active:scale-95"
+              className="flex items-center justify-center gap-2.5 border-2 text-gray-900 py-3.5 rounded-2xl font-bold text-sm transition-all hover:bg-gray-50 active:scale-95"
               style={{ borderColor: accentColor }}
             >
-              <Phone className="w-5 h-5" style={{ color: accentColor }} />
-              Call Family
+              <Phone className="w-4 h-4" style={{ color: accentColor }} />
+              Call Family ({phone})
             </a>
           )}
         </div>
 
         <p className="text-[11px] text-gray-400 text-center leading-relaxed">
-          🔒 Contact info shared securely. Please be respectful in your communication.
+          🔒 Contact info shared with discretion. Please be respectful in your communication.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Photo Lightbox ───────────────────────────────────────────────────────────
+
+function PhotoLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div className="relative max-w-lg w-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white p-2 rounded-full hover:bg-white/20 transition"
+        >
+          <X className="w-6 h-6" />
+        </button>
+        <img
+          src={src}
+          alt={alt}
+          className="max-h-[80vh] w-auto rounded-2xl shadow-2xl object-contain border-2 border-white/20"
+        />
+        <p className="text-white/80 text-xs mt-3 font-semibold">{alt}</p>
       </div>
     </div>
   );
@@ -217,7 +289,6 @@ function TypewriterName({ name, color }: { name: string; color: string }) {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (done) return;
     let i = 0;
     const interval = setInterval(() => {
       i++;
@@ -226,14 +297,18 @@ function TypewriterName({ name, color }: { name: string; color: string }) {
         clearInterval(interval);
         setDone(true);
       }
-    }, 60);
+    }, 70);
     return () => clearInterval(interval);
-  }, [name, done]);
+  }, [name]);
 
   return (
-    <span style={{ color }}>
-      {displayed}
-      {!done && <span className="animate-pulse">|</span>}
+    <span style={{ color }} className="inline-flex items-center">
+      {displayed || name}
+      <span
+        className={`inline-block w-1.5 h-7 ml-1 bg-amber-300 rounded-sm transition-opacity duration-300 ${
+          done ? 'opacity-0' : 'animate-pulse opacity-100'
+        }`}
+      />
     </span>
   );
 }
@@ -252,13 +327,13 @@ function RotatingTagline({ items }: { items: string[] }) {
         setIdx(i => (i + 1) % items.length);
         setFade(true);
       }, 300);
-    }, 2500);
+    }, 2800);
     return () => clearInterval(t);
   }, [items]);
 
   return (
     <span
-      className="transition-opacity duration-300 font-semibold text-gray-600 text-sm"
+      className="transition-opacity duration-300 font-semibold text-white/90 text-sm tracking-wide"
       style={{ opacity: fade ? 1 : 0 }}
     >
       {items[idx]}
@@ -270,14 +345,14 @@ function RotatingTagline({ items }: { items: string[] }) {
 
 function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold: 0.08 }
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      { threshold: 0.05 }
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -289,8 +364,8 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
       style={{
         transitionDelay: `${delay}ms`,
         opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(28px)',
-        transition: 'opacity 0.55s ease, transform 0.55s ease',
+        transform: visible ? 'translateY(0)' : 'translateY(16px)',
+        transition: 'opacity 0.4s ease, transform 0.4s ease',
       }}
     >
       {children}
@@ -302,35 +377,50 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 
 export default function InteractiveBiodata({ profile, template, deity, age }: Props) {
   const { data, slug } = profile;
-  const { personal = {}, astrological = {}, education = {}, family = {}, contact = {}, partnerExpectations = {} } = data;
+  const {
+    personal = {},
+    astrological = {},
+    education = {},
+    family = {},
+    contact = {},
+    partnerExpectations = {},
+  } = data;
 
-  const bg = template.primaryColor;
-  const accent = template.accentColor;
+  const bg = template.primaryColor || '#8B0000';
+  const accent = template.accentColor || '#D4AF37';
+
   const tags: string[] = data.personalityTags?.length ? data.personalityTags : DEFAULT_TAGS;
-  const interests: string[] = data.interests || [];
+  const interests: string[] = data.interests?.length ? data.interests : ['Reading', 'Music', 'Travel', 'Coffee', 'Fitness'];
 
   const [activeTab, setActiveTab] = useState('about');
   const [showQR, setShowQR] = useState(false);
   const [showInterest, setShowInterest] = useState(false);
+  const [showPhotoLightbox, setShowPhotoLightbox] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [liked, setLiked] = useState(false);
+  const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
 
   const profileUrl = typeof window !== 'undefined' ? window.location.href : `https://biolum.pvnpll.in/p/${slug}`;
 
   const taglineItems = [
-    education.occupation,
-    astrological.rashi ? `${astrological.rashi} ♈` : null,
-    contact.city ? `📍 ${contact.city}` : null,
-    education.highestEducation,
+    education.occupation ? `💼 ${education.occupation}` : null,
+    contact.city ? `📍 Based in ${contact.city}` : null,
+    astrological.rashi ? `♈ ${astrological.rashi}` : null,
+    education.highestEducation ? `🎓 ${education.highestEducation}` : null,
   ].filter(Boolean) as string[];
 
   const handleShare = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : profileUrl;
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${personal.fullName} — Marriage Biodata`, url });
+        await navigator.share({
+          title: `${personal.fullName || 'Candidate'} — Marriage Biodata`,
+          text: `Please view the verified matrimonial biodata profile of ${personal.fullName}:`,
+          url,
+        });
         return;
-      } catch { /* cancelled */ }
+      } catch {
+        // Fallback to clipboard
+      }
     }
     if (navigator.clipboard) {
       await navigator.clipboard.writeText(url);
@@ -339,46 +429,64 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
     }
   };
 
+  const handleSaveContact = () => {
+    downloadVCard(
+      (personal.fullName as string) || 'Candidate',
+      contact.phone,
+      contact.email,
+      contact.city,
+      profileUrl
+    );
+  };
+
+  const hasAstrological = astrological && (
+    astrological.religion || astrological.caste || astrological.rashi ||
+    astrological.nakshatra || astrological.gotra || astrological.manglik ||
+    astrological.subCaste || astrological.gan || astrological.nadi
+  );
+
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen text-gray-900"
       style={{
         fontFamily: template.fontFamily === 'serif' ? 'Georgia, serif' : 'system-ui, sans-serif',
-        background: `linear-gradient(160deg, rgba(${hex2rgb(bg)},0.07) 0%, #f9fafb 50%, rgba(${hex2rgb(accent)},0.05) 100%)`,
+        background: `linear-gradient(160deg, rgba(${hex2rgb(bg)},0.06) 0%, #fafafa 50%, rgba(${hex2rgb(accent)},0.06) 100%)`,
       }}
     >
       {/* ── Top Nav Bar ── */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2 flex-none">
             <span className="text-xl font-black bg-gradient-to-r from-rose-600 to-orange-500 bg-clip-text text-transparent">
               BioLum
             </span>
-            <span className="hidden sm:flex text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200 items-center gap-1">
-              <ShieldCheck className="w-3 h-3" /> Verified
+            <span className="hidden sm:inline-flex text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200 items-center gap-1">
+              <ShieldCheck className="w-3 h-3" /> Verified Profile
             </span>
           </Link>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowQR(true)}
-              className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-600"
+              className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-600 cursor-pointer"
               title="Show QR Code"
             >
               <QrCode className="w-4 h-4" />
             </button>
             <button
+              onClick={handleSaveContact}
+              className="hidden sm:inline-flex items-center gap-1.5 border border-gray-200 text-gray-700 bg-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-gray-50 transition cursor-pointer"
+              title="Save Candidate to Phone Contacts"
+            >
+              <Contact className="w-3.5 h-3.5 text-gray-500" />
+              <span>Save Contact</span>
+            </button>
+            <button
               onClick={handleShare}
-              className="inline-flex items-center gap-1.5 bg-rose-600 text-white px-3 sm:px-4 py-2 rounded-xl text-xs font-bold hover:bg-rose-700 transition-all shadow-sm"
+              className="inline-flex items-center gap-1.5 bg-rose-600 text-white px-3 sm:px-4 py-2 rounded-xl text-xs font-bold hover:bg-rose-700 transition-all shadow-sm active:scale-95 cursor-pointer"
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied!' : 'Share'}</span>
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="hidden sm:flex items-center gap-1 border border-gray-200 text-gray-700 bg-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-gray-50 transition"
-            >
-              <Download className="w-3.5 h-3.5" /> Print
             </button>
           </div>
         </div>
@@ -388,7 +496,7 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
 
         {/* ── Hero Card ── */}
         <FadeInSection>
-          <div className="rounded-3xl overflow-hidden shadow-xl border border-white/50">
+          <div className="rounded-3xl overflow-hidden shadow-xl border border-white/60 bg-white">
             {/* Gradient Header */}
             <div
               className="relative text-white p-7 sm:p-10 overflow-hidden"
@@ -397,56 +505,55 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
               }}
             >
               {/* Background decorative circles */}
-              <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-10 bg-white" />
-              <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-10 bg-white" />
+              <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full opacity-15 bg-white blur-xs" />
+              <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full opacity-15 bg-white blur-xs" />
 
               <div className="relative z-10 text-center">
-                <div className="text-5xl mb-3 drop-shadow">{deity?.emoji || '🕉️'}</div>
-                <div className="text-[11px] uppercase tracking-widest opacity-80 font-bold mb-2">
-                  {data.title || 'Marriage Biodata'}
+                <div className="text-5xl mb-2 drop-shadow-md select-none">{deity?.emoji || '🕉️'}</div>
+                <div className="text-[11px] uppercase tracking-widest text-white/80 font-bold mb-1">
+                  {data.title || 'Official Matrimonial Biodata'}
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight drop-shadow-sm">
-                  <TypewriterName name={personal.fullName as string || 'Candidate'} color="white" />
+                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight drop-shadow-sm min-h-[44px]">
+                  <TypewriterName name={(personal.fullName as string) || 'Candidate'} color="white" />
                 </h1>
 
                 {taglineItems.length > 0 && (
-                  <div className="mt-3 text-white/80 text-sm flex items-center justify-center gap-2 min-h-[22px]">
+                  <div className="mt-2 text-sm flex items-center justify-center gap-2 min-h-[24px]">
                     <RotatingTagline items={taglineItems} />
                   </div>
                 )}
 
                 {age && (
-                  <div className="mt-3 inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold">
-                    <Sparkles className="w-3 h-3" /> {age}
-                    {personal.height && ` • ${personal.height}`}
+                  <div className="mt-3.5 inline-flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold border border-white/20">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{age}</span>
+                    {personal.height && <span>• {personal.height}</span>}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Photo + About Row */}
-            <div className="bg-white p-5 sm:p-6 flex flex-col sm:flex-row gap-5 items-center sm:items-start">
+            {/* Photo + Quick Bio Row */}
+            <div className="p-5 sm:p-7 flex flex-col sm:flex-row gap-6 items-center sm:items-start">
               {personal.profilePhoto ? (
-                <div className="relative flex-none group cursor-zoom-in">
+                <div
+                  className="relative flex-none group cursor-zoom-in"
+                  onClick={() => setShowPhotoLightbox(true)}
+                >
                   <img
                     src={personal.profilePhoto as string}
-                    alt={personal.fullName as string}
-                    className="w-32 h-44 sm:w-36 sm:h-48 object-cover rounded-2xl shadow-md transition-transform group-hover:scale-105"
+                    alt={(personal.fullName as string) || 'Candidate'}
+                    className="w-32 h-44 sm:w-36 sm:h-48 object-cover rounded-2xl shadow-md transition-transform duration-300 group-hover:scale-102"
                     style={{ border: `3px solid ${accent}` }}
                   />
-                  <div
-                    className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    style={{ background: `rgba(${hex2rgb(bg)},0.3)` }}
-                  >
-                    <Camera className="w-6 h-6 text-white" />
+                  <div className="absolute inset-0 rounded-2xl bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Maximize2 className="w-6 h-6 text-white drop-shadow" />
                   </div>
                 </div>
               ) : (
-                <div
-                  className="w-28 h-40 rounded-2xl flex flex-col items-center justify-center text-gray-300 bg-gray-50 border-2 border-dashed border-gray-200 flex-none"
-                >
-                  <User className="w-10 h-10 mb-1" />
-                  <span className="text-[11px]">No Photo</span>
+                <div className="w-28 h-38 rounded-2xl flex flex-col items-center justify-center text-gray-300 bg-gray-50 border-2 border-dashed border-gray-200 flex-none">
+                  <User className="w-10 h-10 mb-1 opacity-60" />
+                  <span className="text-[11px] font-medium text-gray-400">Photo Private</span>
                 </div>
               )}
 
@@ -454,60 +561,82 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
                 {/* About Me Quote */}
                 <div
                   className="relative p-4 rounded-2xl text-sm text-gray-700 leading-relaxed italic"
-                  style={{ background: `rgba(${hex2rgb(bg)},0.05)`, borderLeft: `3px solid ${accent}` }}
+                  style={{ background: `rgba(${hex2rgb(bg)},0.04)`, borderLeft: `3px solid ${accent}` }}
                 >
                   <span className="text-3xl leading-none opacity-20 font-serif absolute top-2 left-3">"</span>
-                  <p className="pl-4">{personal.aboutMe || 'Looking for a compassionate and understanding life partner.'}</p>
+                  <p className="pl-4">
+                    {personal.aboutMe || 'Looking for an understanding and open-minded partner with mutual respect and shared family values.'}
+                  </p>
                 </div>
 
                 {/* Personality Tags */}
                 {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                    {tags.map(tag => (
-                      <span
-                        key={tag}
-                        className="text-xs font-bold px-3 py-1 rounded-full border"
-                        style={{ color: bg, borderColor: `rgba(${hex2rgb(bg)},0.3)`, background: `rgba(${hex2rgb(bg)},0.07)` }}
-                      >
-                        {TAG_EMOJI[tag] || '✨'} {tag}
-                      </span>
-                    ))}
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">
+                      Personality & Traits
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                      {tags.map(tag => (
+                        <span
+                          key={tag}
+                          className="text-xs font-bold px-3 py-1 rounded-full border shadow-2xs"
+                          style={{
+                            color: bg,
+                            borderColor: `rgba(${hex2rgb(bg)},0.25)`,
+                            background: `rgba(${hex2rgb(bg)},0.05)`,
+                          }}
+                        >
+                          {TAG_EMOJI[tag] || '✨'} {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {/* Interest Chips */}
+                {/* Interests */}
                 {interests.length > 0 && (
-                  <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                  <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
                     {interests.map(interest => {
                       const Icon = INTEREST_ICONS[interest];
                       return (
                         <span
                           key={interest}
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full hover:bg-gray-200 transition"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold bg-gray-100 text-gray-700 px-3 py-1 rounded-full"
                         >
-                          {Icon ? <Icon className="w-3.5 h-3.5" /> : '🎯'} {interest}
+                          {Icon ? <Icon className="w-3 h-3 text-gray-500" /> : '🎯'} {interest}
                         </span>
                       );
                     })}
                   </div>
                 )}
 
-                {/* Like + Heart CTA */}
-                <div className="flex items-center gap-3 justify-center sm:justify-start pt-1">
-                  <button
-                    onClick={() => setLiked(l => !l)}
-                    className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 ${liked ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-gray-100 text-gray-500 hover:bg-rose-50 hover:text-rose-500'}`}
-                  >
-                    <Heart className={`w-4 h-4 transition-all ${liked ? 'fill-rose-500 text-rose-500 scale-110' : ''}`} />
-                    {liked ? 'Liked ✓' : 'Like Profile'}
-                  </button>
-                  <button
-                    onClick={() => setShowInterest(true)}
-                    className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl text-white transition-all active:scale-95 shadow-sm"
-                    style={{ background: `linear-gradient(135deg, ${bg}, ${accent})` }}
-                  >
-                    <Star className="w-4 h-4" /> Express Interest
-                  </button>
+                {/* Interactive Reactions */}
+                <div className="pt-2 border-t border-gray-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-2 text-center sm:text-left">
+                    Send a Quick Reaction
+                  </span>
+                  <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                    {[
+                      { id: 'auspicious', label: '🌸 Auspicious Alliance' },
+                      { id: 'impressive', label: '⭐ Impressive Profile' },
+                      { id: 'match', label: '💖 Great Match' },
+                    ].map(reaction => {
+                      const isSelected = selectedReaction === reaction.id;
+                      return (
+                        <button
+                          key={reaction.id}
+                          onClick={() => setSelectedReaction(isSelected ? null : reaction.id)}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all active:scale-95 cursor-pointer ${
+                            isSelected
+                              ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-xs'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          {isSelected ? '✓ ' : ''}{reaction.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -515,8 +644,8 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
         </FadeInSection>
 
         {/* ── Tabs Navigation ── */}
-        <FadeInSection delay={80}>
-          <div className="flex gap-1 p-1 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <FadeInSection delay={50}>
+          <div className="flex gap-1.5 p-1.5 bg-white rounded-2xl shadow-sm border border-gray-100">
             {TABS.map(tab => {
               const Icon = tab.icon;
               const active = activeTab === tab.id;
@@ -524,12 +653,15 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all ${active ? 'text-white shadow-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    active
+                      ? 'text-white shadow-md'
+                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                  }`}
                   style={active ? { background: `linear-gradient(135deg, ${bg}, ${accent})` } : {}}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.label.slice(0, 3)}</span>
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
@@ -538,12 +670,13 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
 
         {/* ── Tab Panels ── */}
 
+        {/* Tab 1: About */}
         {activeTab === 'about' && (
-          <FadeInSection delay={100}>
+          <FadeInSection delay={80}>
             <div className="space-y-4">
               <SectionCard>
-                <SectionTitle color={bg}>Personal Details</SectionTitle>
-                <InfoRow label="Date of Birth" value={formatDate(personal.dateOfBirth as string)} />
+                <SectionTitle color={bg}>Personal & Physical Details</SectionTitle>
+                <InfoRow label="Date of Birth" value={formatDate((personal.dateOfBirth as string) || '')} />
                 {personal.timeOfBirth && <InfoRow label="Time of Birth" value={personal.timeOfBirth as string} />}
                 {personal.placeOfBirth && <InfoRow label="Place of Birth" value={personal.placeOfBirth as string} />}
                 {personal.height && <InfoRow label="Height" value={personal.height as string} />}
@@ -554,9 +687,9 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
                 {personal.maritalStatus && <InfoRow label="Marital Status" value={personal.maritalStatus as string} />}
               </SectionCard>
 
-              {(astrological.rashi || astrological.caste) && (
+              {hasAstrological && (
                 <SectionCard>
-                  <SectionTitle color={bg}>Astrological & Religious</SectionTitle>
+                  <SectionTitle color={bg}>Astrological & Horoscope Background</SectionTitle>
                   {astrological.religion && <InfoRow label="Religion" value={astrological.religion} />}
                   {astrological.caste && <InfoRow label="Caste" value={astrological.caste} />}
                   {astrological.subCaste && <InfoRow label="Sub-Caste" value={astrological.subCaste} />}
@@ -572,45 +705,52 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
           </FadeInSection>
         )}
 
+        {/* Tab 2: Career */}
         {activeTab === 'career' && (
-          <FadeInSection delay={100}>
-            <SectionCard>
-              <SectionTitle color={bg}>Education & Profession</SectionTitle>
-              {education.highestEducation && <InfoRow label="Highest Degree" value={education.highestEducation} />}
-              {education.educationDetails && <InfoRow label="Specialization" value={education.educationDetails} />}
-              {education.college && <InfoRow label="University" value={education.college} />}
-              {education.occupation && <InfoRow label="Occupation" value={education.occupation} />}
-              {education.employer && <InfoRow label="Employer" value={education.employer} />}
-              {education.annualIncome && <InfoRow label="Annual Income" value={education.annualIncome} />}
-              {education.workCity && (
-                <InfoRow
-                  label="Work Location"
-                  value={`${education.workCity}${education.workCountry && education.workCountry !== 'India' ? ', ' + education.workCountry : ''}`}
-                />
-              )}
+          <FadeInSection delay={80}>
+            <div className="space-y-4">
+              <SectionCard>
+                <SectionTitle color={bg}>Education & Profession</SectionTitle>
+                {education.highestEducation && <InfoRow label="Highest Degree" value={education.highestEducation} />}
+                {education.educationDetails && <InfoRow label="Field / Specialization" value={education.educationDetails} />}
+                {education.college && <InfoRow label="College / University" value={education.college} />}
+                {education.occupation && <InfoRow label="Current Occupation" value={education.occupation} />}
+                {education.employer && <InfoRow label="Organization / Employer" value={education.employer} />}
+                {education.annualIncome && <InfoRow label="Annual Income" value={education.annualIncome} />}
+                {education.workCity && (
+                  <InfoRow
+                    label="Work Location"
+                    value={`${education.workCity}${education.workCountry && education.workCountry !== 'India' ? ', ' + education.workCountry : ''}`}
+                  />
+                )}
 
-              {/* Career visual accent */}
-              {education.occupation && (
-                <div
-                  className="mt-5 flex items-center gap-3 p-4 rounded-2xl"
-                  style={{ background: `rgba(${hex2rgb(bg)},0.06)` }}
-                >
-                  <div className="p-2.5 rounded-xl" style={{ background: bg }}>
-                    <Briefcase className="w-5 h-5 text-white" />
+                {/* Career highlight badge */}
+                {education.occupation && (
+                  <div
+                    className="mt-5 flex items-center gap-3.5 p-4 rounded-2xl border"
+                    style={{
+                      background: `rgba(${hex2rgb(bg)},0.04)`,
+                      borderColor: `rgba(${hex2rgb(bg)},0.15)`
+                    }}
+                  >
+                    <div className="p-3 rounded-xl shadow-xs" style={{ background: bg }}>
+                      <Briefcase className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Currently Working As</p>
+                      <p className="text-base font-black text-gray-900">{education.occupation}</p>
+                      {education.employer && <p className="text-xs text-gray-600 font-medium">at {education.employer}</p>}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">Currently working as</p>
-                    <p className="text-sm font-black text-gray-900">{education.occupation}</p>
-                    {education.employer && <p className="text-xs text-gray-500">at {education.employer}</p>}
-                  </div>
-                </div>
-              )}
-            </SectionCard>
+                )}
+              </SectionCard>
+            </div>
           </FadeInSection>
         )}
 
+        {/* Tab 3: Family & Contact */}
         {activeTab === 'family' && (
-          <FadeInSection delay={100}>
+          <FadeInSection delay={80}>
             <div className="space-y-4">
               <SectionCard>
                 <SectionTitle color={bg}>Family Background</SectionTitle>
@@ -634,16 +774,26 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
 
               {(contact.city || contact.phone) && (
                 <SectionCard>
-                  <SectionTitle color={bg}>Contact & Location</SectionTitle>
+                  <SectionTitle color={bg}>Residence & Contact Details</SectionTitle>
                   {contact.contactPerson && <InfoRow label="Contact Person" value={contact.contactPerson} />}
-                  {contact.phone && <InfoRow label="Phone" value={contact.phone} />}
-                  {contact.city && <InfoRow label="City & State" value={`${contact.city}, ${contact.state || 'India'}`} />}
+                  {contact.phone && <InfoRow label="Primary Phone" value={contact.phone} />}
+                  {contact.whatsapp && <InfoRow label="WhatsApp" value={contact.whatsapp} />}
+                  {contact.email && <InfoRow label="Email" value={contact.email} />}
                   {contact.address && <InfoRow label="Address" value={contact.address} />}
+                  {contact.city && <InfoRow label="City & State" value={`${contact.city}, ${contact.state || 'India'}`} />}
 
                   {contact.city && (
-                    <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
-                      <MapPin className="w-4 h-4 flex-none" style={{ color: accent }} />
-                      <span>Based in <strong className="text-gray-900">{contact.city}</strong></span>
+                    <div className="mt-4 flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <MapPin className="w-4 h-4 text-rose-600 flex-none" />
+                        <span>Based in <strong className="text-gray-900">{contact.city}</strong></span>
+                      </div>
+                      <button
+                        onClick={handleSaveContact}
+                        className="text-xs font-bold text-rose-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <Contact className="w-3.5 h-3.5" /> Save Contact
+                      </button>
                     </div>
                   )}
                 </SectionCard>
@@ -652,78 +802,98 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
           </FadeInSection>
         )}
 
+        {/* Tab 4: Partner & Values */}
         {activeTab === 'match' && (
-          <FadeInSection delay={100}>
+          <FadeInSection delay={80}>
             <div className="space-y-4">
-              {partnerExpectations.preferences ? (
-                <SectionCard>
-                  <SectionTitle color={bg}>Looking For</SectionTitle>
-                  {(partnerExpectations.ageFrom || partnerExpectations.ageTo) && (
-                    <InfoRow label="Preferred Age" value={`${partnerExpectations.ageFrom || 21}–${partnerExpectations.ageTo || 35} years`} />
-                  )}
-                  {partnerExpectations.education && <InfoRow label="Education" value={partnerExpectations.education} />}
-                  {partnerExpectations.occupation && <InfoRow label="Career" value={partnerExpectations.occupation} />}
+              <SectionCard>
+                <SectionTitle color={bg}>Partner Expectations</SectionTitle>
+                {(partnerExpectations.ageFrom || partnerExpectations.ageTo) && (
+                  <InfoRow label="Preferred Age" value={`${partnerExpectations.ageFrom || 24}–${partnerExpectations.ageTo || 35} years`} />
+                )}
+                {partnerExpectations.education && <InfoRow label="Preferred Education" value={partnerExpectations.education} />}
+                {partnerExpectations.occupation && <InfoRow label="Preferred Career" value={partnerExpectations.occupation} />}
 
+                {partnerExpectations.preferences && (
                   <div
                     className="mt-4 p-4 rounded-2xl text-sm text-gray-700 leading-relaxed italic relative"
-                    style={{ background: `rgba(${hex2rgb(accent)},0.07)` }}
+                    style={{ background: `rgba(${hex2rgb(accent)},0.08)`, borderLeft: `3px solid ${accent}` }}
                   >
                     <span className="text-3xl leading-none opacity-20 font-serif absolute top-2 left-3">"</span>
                     <p className="pl-5">{partnerExpectations.preferences}</p>
                   </div>
-                </SectionCard>
-              ) : (
-                <SectionCard>
-                  <div className="text-center py-8 text-gray-400">
-                    <Heart className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">Partner expectations not specified</p>
-                  </div>
-                </SectionCard>
-              )}
+                )}
+              </SectionCard>
 
-              {/* Express Interest Card */}
+              {/* Lifestyle & Values Icebreaker Card */}
+              <SectionCard>
+                <SectionTitle color={bg}>Lifestyle & Everyday Vibe</SectionTitle>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                  {[
+                    { label: 'Morning Vibe', val: 'Filter Coffee ☕' },
+                    { label: 'Getaway Preference', val: 'Mountains 🏔️' },
+                    { label: 'Ideal Weekend', val: 'Good Books & Cafes 📚' },
+                    { label: 'Daily Rhythm', val: 'Early Riser 🌅' },
+                    { label: 'Food Culture', val: 'Home-Cooked Food 🥘' },
+                    { label: 'Life Philosophy', val: 'Mutual Respect 🤝' },
+                  ].map((item, idx) => (
+                    <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
+                        {item.label}
+                      </span>
+                      <span className="text-xs font-bold text-gray-800">
+                        {item.val}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+
+              {/* Reach Out Card */}
               <div
-                className="rounded-2xl p-6 text-white text-center shadow-lg"
+                className="rounded-3xl p-6 sm:p-7 text-white text-center shadow-lg relative overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${bg} 0%, ${accent} 100%)` }}
               >
                 <div className="text-3xl mb-2">💌</div>
-                <h3 className="font-black text-lg mb-1">Interested in {personal.fullName?.split(' ')[0]}?</h3>
-                <p className="text-sm opacity-80 mb-5">Reach out directly to their family</p>
+                <h3 className="font-black text-xl mb-1">Interested in {personal.fullName?.split(' ')[0] || 'this Candidate'}?</h3>
+                <p className="text-xs text-white/80 max-w-sm mx-auto mb-5 leading-relaxed">
+                  Start a polite conversation directly with the candidate&#39;s family via WhatsApp or phone call.
+                </p>
                 <button
                   onClick={() => setShowInterest(true)}
-                  className="bg-white font-black text-sm px-8 py-3 rounded-xl transition-all hover:bg-gray-100 active:scale-95 shadow-md"
+                  className="bg-white font-black text-sm px-8 py-3.5 rounded-2xl transition-all hover:bg-gray-100 active:scale-95 shadow-md cursor-pointer"
                   style={{ color: bg }}
                 >
-                  Send a Message
+                  Send a Message / Call Family
                 </button>
               </div>
             </div>
           </FadeInSection>
         )}
 
-        {/* ── Create Your Own CTA ── */}
-        <FadeInSection delay={200}>
-          <div className="text-center py-6 border-t border-gray-200">
-            <p className="text-xs text-gray-400 mb-2">Create a beautiful biodata like this for free</p>
+        {/* ── Footer CTA ── */}
+        <FadeInSection delay={120}>
+          <div className="text-center py-6 border-t border-gray-200/80">
+            <p className="text-xs text-gray-400 mb-2">Create your own interactive marriage biodata for free</p>
             <Link
               href="/create"
               className="inline-flex items-center gap-2 font-black text-sm text-rose-600 hover:text-rose-700 hover:underline"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              Create Free Biodata with BioLum →
+              Create Free Biodata on BioLum →
             </Link>
           </div>
         </FadeInSection>
       </main>
 
       {/* ── Floating Express Interest FAB ── */}
-      <div className="fixed bottom-6 right-5 z-40 flex flex-col items-end gap-3">
+      <div className="fixed bottom-6 right-5 z-40">
         <button
           onClick={() => setShowInterest(true)}
-          className="flex items-center gap-2 text-white px-5 py-3.5 rounded-2xl font-black text-sm shadow-2xl transition-all hover:scale-105 active:scale-95"
+          className="flex items-center gap-2 text-white px-5 py-3.5 rounded-2xl font-black text-sm shadow-2xl transition-all hover:scale-105 active:scale-95 cursor-pointer"
           style={{
             background: `linear-gradient(135deg, ${bg}, ${accent})`,
-            boxShadow: `0 8px 32px rgba(${hex2rgb(bg)},0.45)`,
+            boxShadow: `0 8px 30px rgba(${hex2rgb(bg)},0.4)`,
           }}
         >
           <Heart className="w-5 h-5 fill-white" />
@@ -735,18 +905,26 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
       {showQR && (
         <QRModal
           url={profileUrl}
-          name={personal.fullName as string || 'Candidate'}
+          name={(personal.fullName as string) || 'Candidate'}
           onClose={() => setShowQR(false)}
         />
       )}
 
       {showInterest && (
         <InterestModal
-          name={personal.fullName as string || 'Candidate'}
+          name={(personal.fullName as string) || 'Candidate'}
           phone={contact.phone}
-          whatsapp={contact.whatsapp}
+          whatsapp={contact.whatsapp || contact.phone}
           onClose={() => setShowInterest(false)}
           accentColor={accent}
+        />
+      )}
+
+      {showPhotoLightbox && personal.profilePhoto && (
+        <PhotoLightbox
+          src={personal.profilePhoto as string}
+          alt={(personal.fullName as string) || 'Candidate Profile'}
+          onClose={() => setShowPhotoLightbox(false)}
         />
       )}
     </div>

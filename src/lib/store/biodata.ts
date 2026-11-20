@@ -82,6 +82,16 @@ const sampleData: BiodataFormData = {
   },
   customFields: [],
 
+  personalityTags: ['Family-First', 'Ambitious', 'Creative', 'Reader', 'Coffee Lover'],
+  interests: ['Reading', 'Music', 'Travel', 'Coffee', 'Fitness'],
+  lifestyleChoices: {
+    beverage: 'Filter Coffee ☕',
+    travel: 'Mountains 🏔️',
+    leisure: 'Good Books 📚',
+    routine: 'Early Riser 🌅',
+    food: 'Home-Cooked Food 🥘',
+  },
+
   showAstrological: true,
   showPartnerExpectations: true,
   showCustomFields: false,

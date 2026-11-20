@@ -121,6 +121,11 @@ export interface BiodataFormData {
   partnerExpectations: PartnerExpectations;
   customFields: CustomField[];
 
+  // Expressive profile additions
+  personalityTags?: string[];
+  interests?: string[];
+  lifestyleChoices?: Record<string, string>;
+
   // Section visibility
   showAstrological: boolean;
   showPartnerExpectations: boolean;

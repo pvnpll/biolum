@@ -11,11 +11,38 @@ const diets = ['Vegetarian', 'Non-Vegetarian', 'Eggetarian', 'Jain Vegetarian', 
 const maritalStatuses = ['Never Married', 'Divorced', 'Widowed', 'Separated'];
 
 export function PersonalForm() {
-  const { data, updateSection } = useBiodataStore();
+  const { data, updateSection, updateData } = useBiodataStore();
   const { personal, astrological, education, family } = data;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratingBio, setIsGeneratingBio] = useState(false);
   const [bioGenerated, setBioGenerated] = useState(false);
+
+  const availableTags = [
+    'Family-First', 'Ambitious', 'Creative', 'Traveller', 'Introvert',
+    'Extrovert', 'Funny', 'Health-Conscious', 'Spiritual', 'Music Lover',
+    'Foodie', 'Adventurous', 'Reader', 'Coffee Lover'
+  ];
+
+  const availableInterests = [
+    'Reading', 'Music', 'Travel', 'Coffee', 'Fitness',
+    'Photography', 'Cooking', 'Art', 'Movies', 'Nature', 'Yoga'
+  ];
+
+  const toggleTag = (tag: string) => {
+    const current = data.personalityTags || [];
+    const updated = current.includes(tag)
+      ? current.filter(t => t !== tag)
+      : [...current, tag];
+    updateData({ personalityTags: updated });
+  };
+
+  const toggleInterest = (interest: string) => {
+    const current = data.interests || [];
+    const updated = current.includes(interest)
+      ? current.filter(i => i !== interest)
+      : [...current, interest];
+    updateData({ interests: updated });
+  };
 
   const update = (field: string, value: string | null) => {
     updateSection('personal', { [field]: value });
@@ -297,6 +324,58 @@ export function PersonalForm() {
           rows={3}
           className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors resize-none"
         />
+      </div>
+
+      {/* Personality Traits */}
+      <div className="pt-2">
+        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          Personality Traits <span className="text-xs font-normal text-gray-400">(Featured on your web profile)</span>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {availableTags.map((tag) => {
+            const isSelected = (data.personalityTags || []).includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleTag(tag)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  isSelected
+                    ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-xs'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                {isSelected ? '✓ ' : '+ '}{tag}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Hobbies & Interests */}
+      <div className="pt-2">
+        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          Hobbies & Interests
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {availableInterests.map((interest) => {
+            const isSelected = (data.interests || []).includes(interest);
+            return (
+              <button
+                key={interest}
+                type="button"
+                onClick={() => toggleInterest(interest)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  isSelected
+                    ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                {isSelected ? '✓ ' : '+ '}{interest}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
