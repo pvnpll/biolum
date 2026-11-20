@@ -7,7 +7,8 @@ import {
   Heart, Sparkles, Star, MapPin, Briefcase, GraduationCap,
   Users, User, QrCode, X, Copy, ExternalLink,
   BookOpen, Coffee, Music, Camera, Dumbbell, Plane, ChefHat,
-  ShieldCheck, Contact, Compass, Flame, Smile, Maximize2
+  ShieldCheck, Contact, Compass, Flame, Smile, Maximize2,
+  Lock, Key, Unlock, AlertCircle, Loader2
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 
@@ -24,6 +25,14 @@ interface ProfileData {
   personalityTags?: string[];
   lifestyleChoices?: Record<string, string>;
   title?: string;
+  privacySettings?: {
+    isEnabled: boolean;
+    hidePhone: boolean;
+    hideAddress: boolean;
+    hideIncome: boolean;
+    hideAstro: boolean;
+    hidePhoto: boolean;
+  };
 }
 
 interface Props {
@@ -40,6 +49,15 @@ interface Props {
   };
   deity?: { emoji: string; name: string };
   age?: string;
+  isProtected?: boolean;
+  privacySettings?: {
+    isEnabled: boolean;
+    hidePhone: boolean;
+    hideAddress: boolean;
+    hideIncome: boolean;
+    hideAstro: boolean;
+    hidePhoto: boolean;
+  };
 }
 
 // ─── Tab Config ───────────────────────────────────────────────────────────────
@@ -103,8 +121,8 @@ function downloadVCard(name: string, phone?: string, email?: string, city?: stri
     'VERSION:3.0',
     `FN:${name} (Marriage Biodata)`,
     `TITLE:BioLum Verified Candidate`,
-    phone ? `TEL;TYPE=CELL:${phone}` : '',
-    email ? `EMAIL:${email}` : '',
+    phone && !phone.includes('•') ? `TEL;TYPE=CELL:${phone}` : '',
+    email && !email.includes('•') ? `EMAIL:${email}` : '',
     city ? `ADR;TYPE=HOME:;;;${city};;;` : '',
     url ? `URL:${url}` : '',
     `NOTE:Matrimonial profile on BioLum: ${url || ''}`,
@@ -122,12 +140,14 @@ function downloadVCard(name: string, phone?: string, email?: string, city?: stri
 
 // ─── Sub-Components ───────────────────────────────────────────────────────────
 
-function InfoRow({ label, value }: { label: string; value?: string | null }) {
+function InfoRow({ label, value, isLocked }: { label: string; value?: string | null; isLocked?: boolean }) {
   if (!value) return null;
   return (
-    <div className="flex gap-2 py-2 border-b border-gray-100 last:border-0 text-sm">
+    <div className="flex gap-2 py-2 border-b border-gray-100 last:border-0 text-sm items-baseline">
       <span className="text-gray-400 w-36 flex-none font-medium">{label}</span>
-      <span className="text-gray-900 font-semibold flex-1">{value}</span>
+      <span className={`font-semibold flex-1 ${isLocked ? 'text-amber-800 font-mono tracking-wider' : 'text-gray-900'}`}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -149,6 +169,107 @@ function SectionTitle({ children, color }: { children: React.ReactNode; color: s
   );
 }
 
+// ─── Unlock Passcode Modal ────────────────────────────────────────────────────
+
+function UnlockModal({
+  onClose,
+  onUnlock,
+  isUnlocking,
+  error,
+}: {
+  onClose: () => void;
+  onUnlock: (pin: string) => void;
+  isUnlocking: boolean;
+  error?: string;
+}) {
+  const [pin, setPin] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pin.trim()) {
+      onUnlock(pin.trim());
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl p-6 sm:p-7 w-full max-w-sm flex flex-col gap-4 shadow-2xl relative"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer"
+        >
+          <X className="w-4 h-4 text-gray-500" />
+        </button>
+
+        <div className="text-center pt-2">
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 mx-auto flex items-center justify-center mb-3">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-black text-gray-900">Unlock Private Details</h2>
+          <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto leading-relaxed">
+            This candidate&#39;s direct contact & confidential info is locked by the family. Enter the passcode to reveal.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <div className="relative">
+              <Key className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={pin}
+                onChange={e => setPin(e.target.value)}
+                placeholder="Enter access passcode..."
+                className="w-full pl-9 pr-3 py-2.5 text-sm font-bold bg-amber-50/50 border border-amber-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+              />
+            </div>
+            {error && (
+              <p className="text-xs text-rose-600 mt-1.5 flex items-center gap-1 font-medium">
+                <AlertCircle className="w-3.5 h-3.5 flex-none" />
+                <span>{error}</span>
+              </p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={isUnlocking || !pin.trim()}
+            className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            {isUnlocking ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Verifying Passcode...</span>
+              </>
+            ) : (
+              <>
+                <Unlock className="w-4 h-4" />
+                <span>Unlock Full Profile</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        <p className="text-[11px] text-gray-400 text-center">
+          🔒 Passcode is provided directly by the candidate or their parents.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── QR Modal ─────────────────────────────────────────────────────────────────
 
 function QRModal({ url, name, onClose }: { url: string; name: string; onClose: () => void }) {
@@ -164,7 +285,7 @@ function QRModal({ url, name, onClose }: { url: string; name: string; onClose: (
       >
         <div className="flex items-center justify-between w-full">
           <span className="font-black text-gray-900 text-base">Scan to View</span>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 transition">
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer">
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
@@ -183,7 +304,7 @@ function QRModal({ url, name, onClose }: { url: string; name: string; onClose: (
               onClose();
             }, 1200);
           }}
-          className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-gray-800 transition"
+          className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-gray-800 transition cursor-pointer"
         >
           {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
           {copied ? 'Copied to Clipboard!' : 'Copy Profile Link'}
@@ -196,13 +317,19 @@ function QRModal({ url, name, onClose }: { url: string; name: string; onClose: (
 // ─── Express Interest Modal ────────────────────────────────────────────────────
 
 function InterestModal({
-  name, phone, whatsapp, onClose, accentColor,
+  name, phone, whatsapp, isLocked, onOpenUnlock, onClose, accentColor,
 }: {
-  name: string; phone?: string; whatsapp?: string; onClose: () => void; accentColor: string;
+  name: string;
+  phone?: string;
+  whatsapp?: string;
+  isLocked?: boolean;
+  onOpenUnlock: () => void;
+  onClose: () => void;
+  accentColor: string;
 }) {
   const wa = whatsapp || phone;
   const msg = encodeURIComponent(`Namaste! 🙏 I came across the matrimonial biodata of ${name} on BioLum and would like to get in touch.`);
-  
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
@@ -214,7 +341,7 @@ function InterestModal({
       >
         <div className="flex justify-between items-start">
           <div className="text-3xl">💌</div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 transition">
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer">
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
@@ -224,29 +351,53 @@ function InterestModal({
           <p className="text-xs text-gray-500 mt-1">Directly connect with {name}&#39;s family</p>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {wa && (
-            <a
-              href={`https://wa.me/${wa.replace(/[^0-9]/g, '')}?text=${msg}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-2xl font-bold text-sm transition-all shadow-md active:scale-95"
+        {isLocked ? (
+          <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-center space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center mx-auto">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-gray-900">Direct Contact Is Private</p>
+              <p className="text-[11px] text-gray-600 mt-0.5">
+                The family has locked phone numbers & WhatsApp messaging with an access passcode.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                onClose();
+                onOpenUnlock();
+              }}
+              className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <MessageCircle className="w-5 h-5" />
-              Chat on WhatsApp
-            </a>
-          )}
-          {phone && (
-            <a
-              href={`tel:${phone}`}
-              className="flex items-center justify-center gap-2.5 border-2 text-gray-900 py-3.5 rounded-2xl font-bold text-sm transition-all hover:bg-gray-50 active:scale-95"
-              style={{ borderColor: accentColor }}
-            >
-              <Phone className="w-4 h-4" style={{ color: accentColor }} />
-              Call Family ({phone})
-            </a>
-          )}
-        </div>
+              <Key className="w-3.5 h-3.5" />
+              <span>Enter Passcode to Reveal Contact</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {wa && !wa.includes('•') && (
+              <a
+                href={`https://wa.me/${wa.replace(/[^0-9]/g, '')}?text=${msg}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-2xl font-bold text-sm transition-all shadow-md active:scale-95"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Chat on WhatsApp
+              </a>
+            )}
+            {phone && !phone.includes('•') && (
+              <a
+                href={`tel:${phone}`}
+                className="flex items-center justify-center gap-2.5 border-2 text-gray-900 py-3.5 rounded-2xl font-bold text-sm transition-all hover:bg-gray-50 active:scale-95"
+                style={{ borderColor: accentColor }}
+              >
+                <Phone className="w-4 h-4" style={{ color: accentColor }} />
+                Call Family ({phone})
+              </a>
+            )}
+          </div>
+        )}
 
         <p className="text-[11px] text-gray-400 text-center leading-relaxed">
           🔒 Contact info shared with discretion. Please be respectful in your communication.
@@ -267,7 +418,7 @@ function PhotoLightbox({ src, alt, onClose }: { src: string; alt: string; onClos
       <div className="relative max-w-lg w-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
         <button
           onClick={onClose}
-          className="absolute -top-12 right-0 text-white p-2 rounded-full hover:bg-white/20 transition"
+          className="absolute -top-12 right-0 text-white p-2 rounded-full hover:bg-white/20 transition cursor-pointer"
         >
           <X className="w-6 h-6" />
         </button>
@@ -375,8 +526,23 @@ function FadeInSection({ children, delay = 0 }: { children: React.ReactNode; del
 
 // ─── Main Interactive Component ───────────────────────────────────────────────
 
-export default function InteractiveBiodata({ profile, template, deity, age }: Props) {
-  const { data, slug } = profile;
+export default function InteractiveBiodata({
+  profile,
+  template,
+  deity,
+  age,
+  isProtected = false,
+  privacySettings,
+}: Props) {
+  const { slug } = profile;
+
+  // Unlocked Data State
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [profileData, setProfileData] = useState<ProfileData>(profile.data);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+  const [isUnlocking, setIsUnlocking] = useState(false);
+
   const {
     personal = {},
     astrological = {},
@@ -384,13 +550,13 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
     family = {},
     contact = {},
     partnerExpectations = {},
-  } = data;
+  } = profileData;
 
   const bg = template.primaryColor || '#8B0000';
   const accent = template.accentColor || '#D4AF37';
 
-  const tags: string[] = data.personalityTags?.length ? data.personalityTags : DEFAULT_TAGS;
-  const interests: string[] = data.interests?.length ? data.interests : ['Reading', 'Music', 'Travel', 'Coffee', 'Fitness'];
+  const tags: string[] = profileData.personalityTags?.length ? profileData.personalityTags : DEFAULT_TAGS;
+  const interests: string[] = profileData.interests?.length ? profileData.interests : ['Reading', 'Music', 'Travel', 'Coffee', 'Fitness'];
 
   const [activeTab, setActiveTab] = useState('about');
   const [showQR, setShowQR] = useState(false);
@@ -400,6 +566,47 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
   const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
 
   const profileUrl = typeof window !== 'undefined' ? window.location.href : `https://biolum.pvnpll.in/p/${slug}`;
+
+  // Check cached unlock session
+  useEffect(() => {
+    if (isProtected) {
+      try {
+        const cachedPin = sessionStorage.getItem(`biolum_unlocked_${slug}`);
+        if (cachedPin) {
+          handleUnlock(cachedPin);
+        }
+      } catch {}
+    }
+  }, [slug, isProtected]);
+
+  const handleUnlock = async (pinToTry: string) => {
+    setIsUnlocking(true);
+    setUnlockError('');
+    try {
+      const res = await fetch('/api/unlock-bio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, pin: pinToTry }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setUnlockError(json.error || 'Incorrect passcode');
+        return;
+      }
+      if (json.unlockedData) {
+        setProfileData(json.unlockedData);
+        setIsUnlocked(true);
+        setShowUnlockModal(false);
+        try {
+          sessionStorage.setItem(`biolum_unlocked_${slug}`, pinToTry);
+        } catch {}
+      }
+    } catch {
+      setUnlockError('Network error. Please try again.');
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
 
   const taglineItems = [
     education.occupation ? `💼 ${education.occupation}` : null,
@@ -418,9 +625,7 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
           url,
         });
         return;
-      } catch {
-        // Fallback to clipboard
-      }
+      } catch {}
     }
     if (navigator.clipboard) {
       await navigator.clipboard.writeText(url);
@@ -430,6 +635,10 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
   };
 
   const handleSaveContact = () => {
+    if (isProtected && !isUnlocked && privacySettings?.hidePhone) {
+      setShowUnlockModal(true);
+      return;
+    }
     downloadVCard(
       (personal.fullName as string) || 'Candidate',
       contact.phone,
@@ -444,6 +653,8 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
     astrological.nakshatra || astrological.gotra || astrological.manglik ||
     astrological.subCaste || astrological.gan || astrological.nadi
   );
+
+  const isContactLocked = isProtected && !isUnlocked && (privacySettings?.hidePhone || privacySettings?.hideAddress);
 
   return (
     <div
@@ -466,6 +677,25 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
           </Link>
 
           <div className="flex items-center gap-2">
+            {/* Privacy Lock indicator badge */}
+            {isProtected && (
+              isUnlocked ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  <Unlock className="w-3 h-3" />
+                  <span className="hidden sm:inline">Unlocked</span>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setShowUnlockModal(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200 transition cursor-pointer"
+                  title="Unlock Private Details"
+                >
+                  <Lock className="w-3 h-3 text-amber-600" />
+                  <span>Unlock</span>
+                </button>
+              )
+            )}
+
             <button
               onClick={() => setShowQR(true)}
               className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-600 cursor-pointer"
@@ -494,6 +724,30 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
 
       <main className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-5">
 
+        {/* ── Privacy Alert Banner (if locked) ── */}
+        {isProtected && !isUnlocked && (
+          <FadeInSection>
+            <div className="p-3.5 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 rounded-2xl border border-amber-200 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-none">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-900">Private Details Protected</p>
+                  <p className="text-[11px] text-gray-600">Contact & confidential info locked by candidate&#39;s family.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowUnlockModal(true)}
+                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer flex-none"
+              >
+                <Key className="w-3 h-3" />
+                <span>Enter Code</span>
+              </button>
+            </div>
+          </FadeInSection>
+        )}
+
         {/* ── Hero Card ── */}
         <FadeInSection>
           <div className="rounded-3xl overflow-hidden shadow-xl border border-white/60 bg-white">
@@ -511,7 +765,7 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
               <div className="relative z-10 text-center">
                 <div className="text-5xl mb-2 drop-shadow-md select-none">{deity?.emoji || '🕉️'}</div>
                 <div className="text-[11px] uppercase tracking-widest text-white/80 font-bold mb-1">
-                  {data.title || 'Official Matrimonial Biodata'}
+                  {profileData.title || 'Official Matrimonial Biodata'}
                 </div>
                 <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight drop-shadow-sm min-h-[44px]">
                   <TypewriterName name={(personal.fullName as string) || 'Candidate'} color="white" />
@@ -553,7 +807,9 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
               ) : (
                 <div className="w-28 h-38 rounded-2xl flex flex-col items-center justify-center text-gray-300 bg-gray-50 border-2 border-dashed border-gray-200 flex-none">
                   <User className="w-10 h-10 mb-1 opacity-60" />
-                  <span className="text-[11px] font-medium text-gray-400">Photo Private</span>
+                  <span className="text-[11px] font-medium text-gray-400">
+                    {isProtected && !isUnlocked && privacySettings?.hidePhoto ? '🔒 Photo Locked' : 'Photo Private'}
+                  </span>
                 </div>
               )}
 
@@ -689,7 +945,14 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
 
               {hasAstrological && (
                 <SectionCard>
-                  <SectionTitle color={bg}>Astrological & Horoscope Background</SectionTitle>
+                  <div className="flex items-center justify-between mb-2">
+                    <SectionTitle color={bg}>Astrological & Horoscope Background</SectionTitle>
+                    {isProtected && !isUnlocked && privacySettings?.hideAstro && (
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        🔒 Protected
+                      </span>
+                    )}
+                  </div>
                   {astrological.religion && <InfoRow label="Religion" value={astrological.religion} />}
                   {astrological.caste && <InfoRow label="Caste" value={astrological.caste} />}
                   {astrological.subCaste && <InfoRow label="Sub-Caste" value={astrological.subCaste} />}
@@ -716,7 +979,13 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
                 {education.college && <InfoRow label="College / University" value={education.college} />}
                 {education.occupation && <InfoRow label="Current Occupation" value={education.occupation} />}
                 {education.employer && <InfoRow label="Organization / Employer" value={education.employer} />}
-                {education.annualIncome && <InfoRow label="Annual Income" value={education.annualIncome} />}
+                {education.annualIncome && (
+                  <InfoRow
+                    label="Annual Income"
+                    value={education.annualIncome}
+                    isLocked={education.annualIncome.includes('Protected')}
+                  />
+                )}
                 {education.workCity && (
                   <InfoRow
                     label="Work Location"
@@ -772,15 +1041,75 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
                 {family.familyStatus && <InfoRow label="Family Status" value={family.familyStatus} />}
               </SectionCard>
 
+              {/* Residence & Contact Details Card */}
               {(contact.city || contact.phone) && (
                 <SectionCard>
-                  <SectionTitle color={bg}>Residence & Contact Details</SectionTitle>
+                  <div className="flex items-center justify-between mb-1">
+                    <SectionTitle color={bg}>Residence & Contact Details</SectionTitle>
+                    {isContactLocked && (
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Protected
+                      </span>
+                    )}
+                  </div>
+
                   {contact.contactPerson && <InfoRow label="Contact Person" value={contact.contactPerson} />}
-                  {contact.phone && <InfoRow label="Primary Phone" value={contact.phone} />}
-                  {contact.whatsapp && <InfoRow label="WhatsApp" value={contact.whatsapp} />}
-                  {contact.email && <InfoRow label="Email" value={contact.email} />}
-                  {contact.address && <InfoRow label="Address" value={contact.address} />}
+                  {contact.phone && (
+                    <InfoRow
+                      label="Primary Phone"
+                      value={contact.phone}
+                      isLocked={contact.phone.includes('•')}
+                    />
+                  )}
+                  {contact.whatsapp && (
+                    <InfoRow
+                      label="WhatsApp"
+                      value={contact.whatsapp}
+                      isLocked={contact.whatsapp.includes('•')}
+                    />
+                  )}
+                  {contact.email && (
+                    <InfoRow
+                      label="Email"
+                      value={contact.email}
+                      isLocked={contact.email.includes('•')}
+                    />
+                  )}
+                  {contact.address && (
+                    <InfoRow
+                      label="Address"
+                      value={contact.address}
+                      isLocked={contact.address.includes('•')}
+                    />
+                  )}
                   {contact.city && <InfoRow label="City & State" value={`${contact.city}, ${contact.state || 'India'}`} />}
+
+                  {/* Lock Box / Unlocked Banner */}
+                  {isContactLocked ? (
+                    <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-none shadow-xs">
+                          <Lock className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">Direct Contact & Address Locked</p>
+                          <p className="text-[11px] text-gray-600">Enter family passcode to reveal phone numbers and address.</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowUnlockModal(true)}
+                        className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer flex-none"
+                      >
+                        <Key className="w-3.5 h-3.5" />
+                        <span>Unlock with Passcode</span>
+                      </button>
+                    </div>
+                  ) : isProtected && isUnlocked ? (
+                    <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-bold text-emerald-800">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 flex-none" />
+                      <span>Contact Details Unlocked with Family Passcode</span>
+                    </div>
+                  ) : null}
 
                   {contact.city && (
                     <div className="mt-4 flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-100">
@@ -902,6 +1231,15 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
       </div>
 
       {/* ── Modals ── */}
+      {showUnlockModal && (
+        <UnlockModal
+          onClose={() => setShowUnlockModal(false)}
+          onUnlock={handleUnlock}
+          isUnlocking={isUnlocking}
+          error={unlockError}
+        />
+      )}
+
       {showQR && (
         <QRModal
           url={profileUrl}
@@ -915,6 +1253,8 @@ export default function InteractiveBiodata({ profile, template, deity, age }: Pr
           name={(personal.fullName as string) || 'Candidate'}
           phone={contact.phone}
           whatsapp={contact.whatsapp || contact.phone}
+          isLocked={isContactLocked}
+          onOpenUnlock={() => setShowUnlockModal(true)}
           onClose={() => setShowInterest(false)}
           accentColor={accent}
         />

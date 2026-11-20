@@ -55,16 +55,49 @@ export default async function PublicBiodataPage({ params }: PageProps) {
   // Increment views (fire and forget)
   supabase.rpc('biolum_increment_views', { profile_slug: slug }).then(() => {});
 
-  const data = profile.data;
+  const data = profile.data || {};
+  const isProtected = Boolean(profile.access_pin);
+  const privacySettings = data?.privacySettings || {
+    isEnabled: isProtected,
+    hidePhone: true,
+    hideAddress: true,
+    hideIncome: false,
+    hideAstro: false,
+    hidePhoto: false,
+  };
+
+  let displayData = { ...data };
+  if (isProtected) {
+    displayData = {
+      ...displayData,
+      contact: {
+        ...displayData.contact,
+        phone: privacySettings.hidePhone ? '••••••••••' : displayData.contact?.phone,
+        whatsapp: privacySettings.hidePhone ? '' : displayData.contact?.whatsapp,
+        email: privacySettings.hideAddress ? '•••••••••••••' : displayData.contact?.email,
+        address: privacySettings.hideAddress ? '••••••••••••••••••••' : displayData.contact?.address,
+      },
+      education: {
+        ...displayData.education,
+        annualIncome: privacySettings.hideIncome ? 'Protected (Requires Passcode)' : displayData.education?.annualIncome,
+      },
+      personal: {
+        ...displayData.personal,
+        profilePhoto: privacySettings.hidePhoto ? null : displayData.personal?.profilePhoto,
+      },
+      astrological: privacySettings.hideAstro ? {} : displayData.astrological,
+    };
+  }
+
   const template = TEMPLATES.find(t => t.id === profile.template_id) || TEMPLATES[0];
-  const deity = DEITY_SYMBOLS.find(d => d.id === data?.astrological?.deitySymbol);
-  const age = data?.personal?.dateOfBirth ? calculateAge(data.personal.dateOfBirth) : '';
+  const deity = DEITY_SYMBOLS.find(d => d.id === displayData?.astrological?.deitySymbol);
+  const age = displayData?.personal?.dateOfBirth ? calculateAge(displayData.personal.dateOfBirth) : '';
 
   return (
     <InteractiveBiodata
       profile={{
         slug,
-        data,
+        data: displayData,
         template_id: profile.template_id,
         views_count: profile.views_count,
       }}
@@ -75,6 +108,8 @@ export default async function PublicBiodataPage({ params }: PageProps) {
       }}
       deity={deity ? { emoji: deity.emoji, name: deity.label } : undefined}
       age={age}
+      isProtected={isProtected}
+      privacySettings={privacySettings}
     />
   );
 }

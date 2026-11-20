@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     const candidateName = data.personal?.fullName || 'biodata';
     const slug = generateRandomSlug(candidateName);
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'bp-' + Date.now();
+    const resolvedPin = accessPin || data.privacySettings?.accessPin || null;
 
     const { error } = await supabase.from('biolum_profiles').insert({
       id,
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
       title: data.title || 'Marriage Biodata',
       template_id: data.templateId || 'traditional-red',
       data,
-      access_pin: accessPin || null,
+      access_pin: resolvedPin,
       is_active: true,
       views_count: 0,
     });

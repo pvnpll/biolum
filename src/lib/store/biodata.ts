@@ -92,6 +92,16 @@ const sampleData: BiodataFormData = {
     food: 'Home-Cooked Food 🥘',
   },
 
+  privacySettings: {
+    isEnabled: false,
+    accessPin: '',
+    hidePhone: true,
+    hideAddress: true,
+    hideIncome: false,
+    hideAstro: false,
+    hidePhoto: false,
+  },
+
   showAstrological: true,
   showPartnerExpectations: true,
   showCustomFields: false,

@@ -126,6 +126,9 @@ export interface BiodataFormData {
   interests?: string[];
   lifestyleChoices?: Record<string, string>;
 
+  // Privacy & Access Control
+  privacySettings?: PrivacySettings;
+
   // Section visibility
   showAstrological: boolean;
   showPartnerExpectations: boolean;
@@ -140,6 +143,16 @@ export interface ExportOptions {
   format: ExportFormat;
   includeWatermark: boolean;
   quality: 'standard' | 'high';
+}
+
+export interface PrivacySettings {
+  isEnabled: boolean;
+  accessPin?: string;
+  hidePhone: boolean;
+  hideAddress: boolean;
+  hideIncome: boolean;
+  hideAstro: boolean;
+  hidePhoto: boolean;
 }
 
 export type FormStep = 
